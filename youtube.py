@@ -11,38 +11,39 @@ def search_videos(keyword, max_results=25):
         type="video",
         maxResults=max_results,
         regionCode="US",
-        relevanceLanguage="en"
+        relevanceLanguage="en",
+        order="viewCount"
     )
     response = request.execute()
-
-    video_ids = []
-    for item in response["items"]:
-        video_ids.append(item["id"]["videoId"])
-
-    return video_ids
+    return [item["id"]["videoId"] for item in response["items"]]
 
 
 def get_video_details(video_ids):
     request = youtube.videos().list(
-        part="snippet,statistics",
+        part="snippet,statistics,contentDetails",
         id=",".join(video_ids)
     )
     response = request.execute()
 
     videos = []
-
     for item in response["items"]:
         snippet = item["snippet"]
         stats = item.get("statistics", {})
+        duration = item.get("contentDetails", {}).get("duration", "PT0S")
 
         videos.append({
             "video_id": item["id"],
+            "url": f"https://www.youtube.com/watch?v={item['id']}",
             "title": snippet["title"],
+            "description": snippet.get("description", "")[:300],
             "channel": snippet["channelTitle"],
             "published": snippet["publishedAt"],
+            "thumbnail": snippet["thumbnails"]["high"]["url"],
+            "tags": snippet.get("tags", [])[:10],
             "views": int(stats.get("viewCount", 0)),
             "likes": int(stats.get("likeCount", 0)),
-            "comments": int(stats.get("commentCount", 0))
+            "comments": int(stats.get("commentCount", 0)),
+            "duration": duration,
         })
 
     return videos

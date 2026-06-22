@@ -1,35 +1,51 @@
-from openai import OpenAI
-from config import OPENAI_API_KEY
+import google.generativeai as genai
+from config import GEMINI_API_KEY
 
-client = OpenAI(api_key=OPENAI_API_KEY)
+genai.configure(api_key=GEMINI_API_KEY)
+model = genai.GenerativeModel("gemini-3.5-flash")
 
 
 def analyze(keyword, videos, creators):
     top_videos = videos[:8]
-    top_creators = creators[:5]
 
-    prompt = f"""
-You are analyzing North American YouTube trends.
+    video_summaries = []
+    for v in top_videos:
+        video_summaries.append({
+            "title": v["title"],
+            "views": f"{v['views']:,}",
+            "days_old": v["days_old"],
+            "engagement_rate": f"{v['engagement_rate']}%",
+            "tags": v["tags"],
+            "description_preview": v["description"],
+            "url": v["url"]
+        })
 
-Keyword: {keyword}
+    prompt = f"""You are a viral content strategist analyzing why YouTube videos explode in views.
 
-Top Videos:
-{top_videos}
+Keyword: "{keyword}"
 
-Top Creators:
-{top_creators}
+Top performing videos (ranked by view velocity):
+{video_summaries}
 
-Return:
-1. Why this topic is trending
-2. Common video hooks/formats
-3. Emotional triggers used
-4. Content gaps creators can exploit
-5. Best creators for collaboration and why
+Analyze ONLY these 3 things, be specific and direct:
+
+1. 🪝 HOOKS & TITLES
+   - What title patterns are working? (numbers, questions, shock, curiosity gaps)
+   - What words/phrases keep appearing?
+   - Why do these hooks stop the scroll?
+
+2. 😮 EMOTIONAL TRIGGERS
+   - What core emotion is being activated? (fear, greed, curiosity, outrage, hope)
+   - How is the thumbnail/title combo triggering that emotion?
+   - What pain point or desire is being tapped?
+
+3. ⏱️ TIMING & VELOCITY
+   - How old are the top videos vs their view counts?
+   - Is this topic evergreen or a short-lived spike?
+   - What's the ideal window to publish content on this topic?
+
+Be blunt, specific, and actionable. No fluff.
 """
 
-    response = client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[{"role": "user", "content": prompt}]
-    )
-
-    return response.choices[0].message.content
+    response = model.generate_content(prompt)
+    return response.text
