@@ -39,4 +39,17 @@ def get_video_details(video_ids):
 
         videos.append({
             "video_id": item["id"],
-            "url":
+            "url": f"https://www.youtube.com/watch?v={item['id']}",
+            "title": snippet["title"],
+            "description": snippet.get("description", "")[:300],
+            "channel": snippet["channelTitle"],
+            "published": snippet["publishedAt"],
+            "thumbnail": snippet["thumbnails"]["high"]["url"],
+            "tags": snippet.get("tags", [])[:10],
+            "views": int(stats.get("viewCount", 0)),
+            "likes": int(stats.get("likeCount", 0)),
+            "comments": int(stats.get("commentCount", 0)),
+            "duration": duration,
+        })
+
+    return videos
