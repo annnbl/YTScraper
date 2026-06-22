@@ -1,10 +1,20 @@
 from googleapiclient.discovery import build
 from datetime import datetime, timedelta
+import unicodedata
 import os
 
 YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY")
 
 youtube = build("youtube", "v3", developerKey=YOUTUBE_API_KEY)
+
+
+def is_english(text):
+    for char in text:
+        if char.isalpha():
+            lang = unicodedata.name(char, "").split()[0]
+            if lang not in ("LATIN", "DIGIT"):
+                return False
+    return True
 
 
 def search_videos(keyword, max_results=25):
@@ -14,25 +24,23 @@ def search_videos(keyword, max_results=25):
         q=keyword,
         part="snippet",
         type="video",
-        maxResults=max_results,
+        maxResults=max_results * 2,
         regionCode="US",
         relevanceLanguage="en",
         order="relevance",
         publishedAfter=week_ago,
-        relevanceLanguage="en",
-        videoDuration="any",
         videoEmbeddable="true",
     )
     response = request.execute()
 
     video_ids = []
     for item in response["items"]:
-        # Filter out non-English titles by checking for non-ASCII characters
         title = item["snippet"]["title"]
-        if title.isascii():
+        channel = item["snippet"]["channelTitle"]
+        if is_english(title) and is_english(channel):
             video_ids.append(item["id"]["videoId"])
 
-    return video_ids
+    return video_ids[:max_results]
 
 
 def get_video_details(video_ids):
