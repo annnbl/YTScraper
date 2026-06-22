@@ -18,10 +18,21 @@ def search_videos(keyword, max_results=25):
         regionCode="US",
         relevanceLanguage="en",
         order="relevance",
-        publishedAfter=week_ago
+        publishedAfter=week_ago,
+        relevanceLanguage="en",
+        videoDuration="any",
+        videoEmbeddable="true",
     )
     response = request.execute()
-    return [item["id"]["videoId"] for item in response["items"]]
+
+    video_ids = []
+    for item in response["items"]:
+        # Filter out non-English titles by checking for non-ASCII characters
+        title = item["snippet"]["title"]
+        if title.isascii():
+            video_ids.append(item["id"]["videoId"])
+
+    return video_ids
 
 
 def get_video_details(video_ids):
