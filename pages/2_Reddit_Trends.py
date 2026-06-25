@@ -35,10 +35,10 @@ SCRAPER_API_KEY = os.getenv("SCRAPER_API_KEY")
 
 def search_reddit(keyword, subreddit, time_filter="week", limit=25):
     reddit_url = f"https://www.reddit.com/r/{subreddit}/search.json?q={keyword}&sort=top&t={time_filter}&limit={limit}&restrict_sr=1"
-    url = f"http://api.scraperapi.com?api_key={SCRAPER_API_KEY}&url={reddit_url}"
+    url = f"https://api.scraperapi.com?api_key={SCRAPER_API_KEY}&url={reddit_url}"
 
     try:
-        response = requests.get(url, timeout=30)
+        response = requests.get(url, timeout=60)
         if response.status_code != 200:
             return []
         data = response.json()
