@@ -44,12 +44,12 @@ def search_reddit(keyword, subreddit, time_filter="week", limit=25):
     url = "https://arctic-shift.photon-reddit.com/api/posts/search"
 
     params = {
-        "subreddit": subreddit.lower().replace("r/", ""),
-        "title": keyword,          # Search title text
-        "after": after_date,
-        "limit": int(limit),
-        "sort": "desc",
-        "sort_type": "score"
+    "subreddit": subreddit.lower().replace("r/", ""),
+    "title": keyword,
+    "after": after_date,
+    "limit": int(limit),
+    "sort": "desc",
+    "sort_type": "default"
     }
 
     try:
