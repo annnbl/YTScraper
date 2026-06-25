@@ -30,29 +30,24 @@ SUBREDDITS = [
     "fatFIRE"
 ]
 
-SCRAPER_API_KEY = os.getenv("SCRAPER_API_KEY")
-
 
 def search_reddit(keyword, subreddit, time_filter="week", limit=25):
-    reddit_url = f"https://www.reddit.com/r/{subreddit}/search.json?q={keyword}&sort=top&t={time_filter}&limit={limit}&restrict_sr=1"
-
+    url = f"https://www.reddit.com/r/{subreddit}/search.json"
+    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36"}
+    params = {
+        "q": keyword,
+        "sort": "top",
+        "t": time_filter,
+        "limit": limit,
+        "restrict_sr": 1
+    }
     try:
-        scraper_url = f"https://api.scraperapi.com?api_key={SCRAPER_API_KEY}&url={reddit_url}"
-        response = requests.get(scraper_url, timeout=60)
-    except:
-        try:
-            response = requests.get(reddit_url, headers={"User-Agent": "Mozilla/5.0"}, timeout=15)
-        except Exception as e:
-            st.warning(f"Could not fetch r/{subreddit}: {e}")
+        response = requests.get(url, headers=headers, params=params, timeout=15)
+        if response.status_code != 200:
+            st.warning(f"r/{subreddit} returned status {response.status_code}")
             return []
-
-    try:
         data = response.json()
         children = data.get("data", {}).get("children", [])
-        if not children:
-            st.warning(f"No results found in r/{subreddit}")
-            return []
-
         posts = []
         for item in children:
             p = item["data"]
@@ -72,8 +67,9 @@ def search_reddit(keyword, subreddit, time_filter="week", limit=25):
             })
         return posts
     except Exception as e:
-        st.warning(f"Failed to parse r/{subreddit}: {e}")
+        st.warning(f"Could not fetch r/{subreddit}: {e}")
         return []
+
 
 col1, col2 = st.columns(2)
 
@@ -102,7 +98,7 @@ if st.button("🔍 Analyze Reddit Trends", type="primary"):
         for sub in selected_subreddits:
             posts = search_reddit(keyword, sub, time_filter, num_posts)
             all_posts.extend(posts)
-            time.sleep(0.5)
+            time.sleep(1)
 
     if not all_posts:
         st.error("No posts found. Try a different keyword or subreddit.")
