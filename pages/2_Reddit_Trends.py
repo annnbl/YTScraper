@@ -35,15 +35,26 @@ SCRAPER_API_KEY = os.getenv("SCRAPER_API_KEY")
 
 def search_reddit(keyword, subreddit, time_filter="week", limit=25):
     reddit_url = f"https://www.reddit.com/r/{subreddit}/search.json?q={keyword}&sort=top&t={time_filter}&limit={limit}&restrict_sr=1"
-    url = f"https://api.scraperapi.com?api_key={SCRAPER_API_KEY}&url={reddit_url}"
 
     try:
-        response = requests.get(url, timeout=60)
-        if response.status_code != 200:
+        scraper_url = f"https://api.scraperapi.com?api_key={SCRAPER_API_KEY}&url={reddit_url}"
+        response = requests.get(scraper_url, timeout=60)
+    except:
+        try:
+            response = requests.get(reddit_url, headers={"User-Agent": "Mozilla/5.0"}, timeout=15)
+        except Exception as e:
+            st.warning(f"Could not fetch r/{subreddit}: {e}")
             return []
+
+    try:
         data = response.json()
+        children = data.get("data", {}).get("children", [])
+        if not children:
+            st.warning(f"No results found in r/{subreddit}")
+            return []
+
         posts = []
-        for item in data["data"]["children"]:
+        for item in children:
             p = item["data"]
             created = datetime.utcfromtimestamp(p["created_utc"])
             age_days = max(1, (datetime.utcnow() - created).days)
@@ -61,9 +72,8 @@ def search_reddit(keyword, subreddit, time_filter="week", limit=25):
             })
         return posts
     except Exception as e:
-        st.warning(f"Could not fetch r/{subreddit}: {e}")
+        st.warning(f"Failed to parse r/{subreddit}: {e}")
         return []
-
 
 col1, col2 = st.columns(2)
 
