@@ -1,5 +1,6 @@
 import streamlit as st
 import requests
+import urllib.parse
 from datetime import datetime
 import os
 from analysis_reddit import analyze_reddit
@@ -30,19 +31,22 @@ SUBREDDITS = [
     "fatFIRE"
 ]
 
+SCRAPER_API_KEY = os.getenv("SCRAPER_API_KEY")
+
 
 def search_reddit(keyword, subreddit, time_filter="week", limit=25):
-    url = f"https://www.reddit.com/r/{subreddit}/search.json"
-    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36"}
-    params = {
-        "q": keyword,
-        "sort": "top",
-        "t": time_filter,
-        "limit": limit,
-        "restrict_sr": 1
-    }
+    reddit_url = f"https://www.reddit.com/r/{subreddit}/search.json?q={urllib.parse.quote(keyword)}&sort=top&t={time_filter}&limit={limit}&restrict_sr=1"
+
     try:
-        response = requests.get(url, headers=headers, params=params, timeout=15)
+        response = requests.get(
+            "https://api.scraperapi.com/",
+            params={
+                "api_key": SCRAPER_API_KEY,
+                "url": reddit_url,
+                "render": "false"
+            },
+            timeout=60
+        )
         if response.status_code != 200:
             st.warning(f"r/{subreddit} returned status {response.status_code}")
             return []
