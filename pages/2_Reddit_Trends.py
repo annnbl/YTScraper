@@ -31,41 +31,45 @@ SUBREDDITS = [
     "fatFIRE"
 ]
 
-SCRAPER_API_KEY = os.getenv("SCRAPER_API_KEY")
-
 
 def search_reddit(keyword, subreddit, time_filter="week", limit=25):
-    reddit_url = f"https://www.reddit.com/r/{subreddit}/search.json?q={urllib.parse.quote(keyword)}&sort=top&t={time_filter}&limit={limit}&restrict_sr=1"
+    # Map time filter to days
+    time_map = {"day": 1, "week": 7, "month": 30}
+    days = time_map.get(time_filter, 7)
+    after = int(time.time()) - (days * 86400)
+
+    url = "https://arctic-shift.photon-reddit.com/api/posts/search"
+    params = {
+        "q": keyword,
+        "subreddit": subreddit,
+        "limit": limit,
+        "after": after,
+        "sort": "score"
+    }
 
     try:
-        response = requests.get(
-            "https://api.scraperapi.com/",
-            params={
-                "api_key": SCRAPER_API_KEY,
-                "url": reddit_url,
-                "render": "false"
-            },
-            timeout=60
-        )
+        response = requests.get(url, params=params, timeout=20)
         if response.status_code != 200:
             st.warning(f"r/{subreddit} returned status {response.status_code}")
             return []
+
         data = response.json()
-        children = data.get("data", {}).get("children", [])
+        items = data.get("data", [])
+
         posts = []
-        for item in children:
-            p = item["data"]
-            created = datetime.utcfromtimestamp(p["created_utc"])
+        for p in items:
+            created = datetime.utcfromtimestamp(p.get("created_utc", 0))
             age_days = max(1, (datetime.utcnow() - created).days)
+            score = int(p.get("score", 0))
             posts.append({
-                "title": p["title"],
+                "title": p.get("title", ""),
                 "subreddit": subreddit,
-                "url": f"https://reddit.com{p['permalink']}",
-                "upvotes": p["score"],
-                "comments": p["num_comments"],
-                "upvote_ratio": round(p["upvote_ratio"] * 100, 1),
+                "url": f"https://reddit.com{p.get('permalink', '')}",
+                "upvotes": score,
+                "comments": int(p.get("num_comments", 0)),
+                "upvote_ratio": round(float(p.get("upvote_ratio", 0)) * 100, 1),
                 "age_days": age_days,
-                "velocity": round(p["score"] / age_days, 1),
+                "velocity": round(score / age_days, 1),
                 "flair": p.get("link_flair_text") or "None",
                 "text_preview": p.get("selftext", "")[:200]
             })
@@ -102,7 +106,7 @@ if st.button("🔍 Analyze Reddit Trends", type="primary"):
         for sub in selected_subreddits:
             posts = search_reddit(keyword, sub, time_filter, num_posts)
             all_posts.extend(posts)
-            time.sleep(1)
+            time.sleep(0.5)
 
     if not all_posts:
         st.error("No posts found. Try a different keyword or subreddit.")
