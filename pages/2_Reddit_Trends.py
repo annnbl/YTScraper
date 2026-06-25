@@ -1,7 +1,7 @@
 import streamlit as st
 import requests
 import urllib.parse
-from datetime import datetime
+from datetime import datetime, timedelta
 import os
 from analysis_reddit import analyze_reddit
 import time
@@ -33,34 +33,60 @@ SUBREDDITS = [
 
 
 def search_reddit(keyword, subreddit, time_filter="week", limit=25):
-    # Map time filter to days
     time_map = {"day": 1, "week": 7, "month": 30}
     days = time_map.get(time_filter, 7)
-    after = int(time.time()) - (days * 86400)
+
+    # Arctic Shift commonly expects ISO timestamps, not Unix timestamps
+    after_date = (
+        datetime.utcnow() - timedelta(days=days)
+    ).strftime("%Y-%m-%dT%H:%M:%SZ")
 
     url = "https://arctic-shift.photon-reddit.com/api/posts/search"
+
     params = {
-        "q": keyword,
-        "subreddit": subreddit,
-        "limit": limit,
-        "after": after,
-        "sort": "score"
+        "subreddit": subreddit.lower().replace("r/", ""),
+        "title": keyword,          # Search title text
+        "after": after_date,
+        "limit": int(limit),
+        "sort": "desc",
+        "sort_type": "score"
     }
 
     try:
-        response = requests.get(url, params=params, timeout=20)
+        response = requests.get(
+            url,
+            params=params,
+            timeout=20,
+            headers={
+                "User-Agent": "reddit-viral-intelligence/1.0"
+            }
+        )
+
         if response.status_code != 200:
             st.warning(f"r/{subreddit} returned status {response.status_code}")
+            st.code(response.text)  # temporary: shows the actual API error
             return []
 
         data = response.json()
-        items = data.get("data", [])
+
+        # Arctic Shift may return "data" or "posts" depending on endpoint version
+        items = data.get("data", data.get("posts", []))
 
         posts = []
         for p in items:
-            created = datetime.utcfromtimestamp(p.get("created_utc", 0))
+            created_utc = p.get("created_utc", 0)
+
+            # Some API responses give a Unix timestamp, others ISO text
+            if isinstance(created_utc, (int, float)):
+                created = datetime.utcfromtimestamp(created_utc)
+            else:
+                created = datetime.fromisoformat(
+                    str(created_utc).replace("Z", "+00:00")
+                ).replace(tzinfo=None)
+
             age_days = max(1, (datetime.utcnow() - created).days)
             score = int(p.get("score", 0))
+
             posts.append({
                 "title": p.get("title", ""),
                 "subreddit": subreddit,
@@ -73,12 +99,12 @@ def search_reddit(keyword, subreddit, time_filter="week", limit=25):
                 "flair": p.get("link_flair_text") or "None",
                 "text_preview": p.get("selftext", "")[:200]
             })
+
         return posts
-    except Exception as e:
+
+    except requests.RequestException as e:
         st.warning(f"Could not fetch r/{subreddit}: {e}")
         return []
-
-
 col1, col2 = st.columns(2)
 
 with col1:
