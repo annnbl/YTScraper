@@ -2,7 +2,7 @@ import google.generativeai as genai
 import os
 
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-model = genai.GenerativeModel("gemini-3.1-flash-lite-preview-06-17")
+model = genai.GenerativeModel('gemini-3.1-flash-lite')
 
 
 def analyze(keyword, videos, creators):
