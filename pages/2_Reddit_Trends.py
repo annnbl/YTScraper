@@ -1,7 +1,6 @@
 import streamlit as st
 import requests
-import urllib.parse
-from datetime import datetime
+from datetime import datetime, timedelta
 import os
 from analysis_reddit import analyze_reddit
 import time
@@ -33,15 +32,19 @@ SUBREDDITS = [
 
 
 def search_reddit(keyword, subreddit, time_filter="week", limit=25):
-    after = int(time.time()) - ({"day": 1, "week": 7, "month": 30}.get(time_filter, 7) * 86400)
+    time_map = {"day": 1, "week": 7, "month": 30}
+    days = time_map.get(time_filter, 7)
+    after_date = (datetime.utcnow() - timedelta(days=days)).strftime("%Y-%m-%d")
+
     url = "https://arctic-shift.photon-reddit.com/api/posts/search"
     params = {
-        "q": keyword,
+        "query": keyword,
         "subreddit": subreddit,
         "limit": limit,
-        "after": after,
-        "sort": "score"
+        "after": after_date,
+        "sort": "desc"
     }
+
     try:
         response = requests.get(url, params=params, timeout=20)
         if response.status_code != 200:
@@ -50,16 +53,18 @@ def search_reddit(keyword, subreddit, time_filter="week", limit=25):
         data = response.json()
         posts = []
         for p in data.get("data", []):
+            score = int(p.get("score", 0))
+            created = datetime.utcfromtimestamp(p.get("created_utc", 0))
             posts.append({
                 "title": p.get("title", ""),
                 "subreddit": subreddit,
-                "url": f"https://reddit.com{p.get('permalink', '')}",
-                "upvotes": int(p.get("score", 0)),
+                "url": f"https://reddit.com/r/{subreddit}/comments/{p.get('id', '')}",
+                "upvotes": score,
                 "comments": int(p.get("num_comments", 0)),
                 "upvote_ratio": round(float(p.get("upvote_ratio", 0)) * 100, 1),
                 "flair": p.get("link_flair_text") or "None",
                 "text_preview": p.get("selftext", "")[:200],
-                "published": datetime.utcfromtimestamp(p.get("created_utc", 0)).strftime("%Y-%m-%d")
+                "published": created.strftime("%Y-%m-%d")
             })
         return posts
     except Exception as e:
