@@ -2,7 +2,7 @@ import google.generativeai as genai
 import os
 
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-model = genai.GenerativeModel('gemini-3.1-flash-lite')
+model = genai.GenerativeModel("gemini-2.5-flash-lite")
 
 
 def analyze_reddit(keyword, posts):
@@ -16,8 +16,7 @@ def analyze_reddit(keyword, posts):
             "upvotes": f"{p['upvotes']:,}",
             "comments": p["comments"],
             "upvote_ratio": f"{p['upvote_ratio']}%",
-            "age_days": p["age_days"],
-            "velocity": round(p["velocity"], 1),
+            "flair": p["flair"],
             "preview": p["text_preview"]
         })
 
@@ -25,7 +24,7 @@ def analyze_reddit(keyword, posts):
 
 Keyword: "{keyword}"
 
-Top performing posts (ranked by upvote velocity):
+Top performing posts (ranked by upvotes):
 {post_summaries}
 
 Analyze ONLY these 3 things, be specific and direct:
@@ -41,7 +40,6 @@ Analyze ONLY these 3 things, be specific and direct:
    - Why does this resonate with this specific subreddit audience?
 
 3. ⏱️ TIMING & VELOCITY
-   - How old are the top posts vs their upvote counts?
    - Is this topic evergreen or a short-lived spike on Reddit?
    - What's the best time/angle to post about this topic?
 

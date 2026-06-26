@@ -1,7 +1,7 @@
 import streamlit as st
 import requests
 import urllib.parse
-from datetime import datetime, timedelta
+from datetime import datetime
 import os
 from analysis_reddit import analyze_reddit
 import time
@@ -33,78 +33,40 @@ SUBREDDITS = [
 
 
 def search_reddit(keyword, subreddit, time_filter="week", limit=25):
-    time_map = {"day": 1, "week": 7, "month": 30}
-    days = time_map.get(time_filter, 7)
-
-    # Arctic Shift commonly expects ISO timestamps, not Unix timestamps
-    after_date = (
-        datetime.utcnow() - timedelta(days=days)
-    ).strftime("%Y-%m-%dT%H:%M:%SZ")
-
+    after = int(time.time()) - ({"day": 1, "week": 7, "month": 30}.get(time_filter, 7) * 86400)
     url = "https://arctic-shift.photon-reddit.com/api/posts/search"
-
     params = {
-    "subreddit": subreddit.lower().replace("r/", ""),
-    "title": keyword,
-    "after": after_date,
-    "limit": int(limit),
-    "sort": "desc",
-    "sort_type": "default"
+        "q": keyword,
+        "subreddit": subreddit,
+        "limit": limit,
+        "after": after,
+        "sort": "score"
     }
-
     try:
-        response = requests.get(
-            url,
-            params=params,
-            timeout=20,
-            headers={
-                "User-Agent": "reddit-viral-intelligence/1.0"
-            }
-        )
-
+        response = requests.get(url, params=params, timeout=20)
         if response.status_code != 200:
             st.warning(f"r/{subreddit} returned status {response.status_code}")
-            st.code(response.text)  # temporary: shows the actual API error
             return []
-
         data = response.json()
-
-        # Arctic Shift may return "data" or "posts" depending on endpoint version
-        items = data.get("data", data.get("posts", []))
-
         posts = []
-        for p in items:
-            created_utc = p.get("created_utc", 0)
-
-            # Some API responses give a Unix timestamp, others ISO text
-            if isinstance(created_utc, (int, float)):
-                created = datetime.utcfromtimestamp(created_utc)
-            else:
-                created = datetime.fromisoformat(
-                    str(created_utc).replace("Z", "+00:00")
-                ).replace(tzinfo=None)
-
-            age_days = max(1, (datetime.utcnow() - created).days)
-            score = int(p.get("score", 0))
-
+        for p in data.get("data", []):
             posts.append({
                 "title": p.get("title", ""),
                 "subreddit": subreddit,
                 "url": f"https://reddit.com{p.get('permalink', '')}",
-                "upvotes": score,
+                "upvotes": int(p.get("score", 0)),
                 "comments": int(p.get("num_comments", 0)),
                 "upvote_ratio": round(float(p.get("upvote_ratio", 0)) * 100, 1),
-                "age_days": age_days,
-                "velocity": round(score / age_days, 1),
                 "flair": p.get("link_flair_text") or "None",
-                "text_preview": p.get("selftext", "")[:200]
+                "text_preview": p.get("selftext", "")[:200],
+                "published": datetime.utcfromtimestamp(p.get("created_utc", 0)).strftime("%Y-%m-%d")
             })
-
         return posts
-
-    except requests.RequestException as e:
+    except Exception as e:
         st.warning(f"Could not fetch r/{subreddit}: {e}")
         return []
+
+
 col1, col2 = st.columns(2)
 
 with col1:
@@ -138,7 +100,7 @@ if st.button("🔍 Analyze Reddit Trends", type="primary"):
         st.error("No posts found. Try a different keyword or subreddit.")
         st.stop()
 
-    ranked_posts = sorted(all_posts, key=lambda x: x["velocity"], reverse=True)
+    ranked_posts = sorted(all_posts, key=lambda x: x["upvotes"], reverse=True)
 
     col1, col2 = st.columns([3, 2])
 
@@ -147,8 +109,10 @@ if st.button("🔍 Analyze Reddit Trends", type="primary"):
         for i, p in enumerate(ranked_posts[:10], 1):
             with st.expander(f"#{i} — {p['title']}"):
                 st.markdown(f"**Subreddit:** r/{p['subreddit']} &nbsp;|&nbsp; **Flair:** {p['flair']}")
-                st.markdown(f"**Upvotes:** {p['upvotes']:,} &nbsp;|&nbsp; **Comments:** {p['comments']:,} &nbsp;|&nbsp; **Upvote Ratio:** {p['upvote_ratio']}%")
-                st.markdown(f"**Age:** {p['age_days']} days &nbsp;|&nbsp; **Velocity:** {p['velocity']} upvotes/day")
+                st.markdown(f"**Published:** {p['published']}")
+                st.markdown(f"**Upvotes:** {p['upvotes']:,}")
+                st.markdown(f"**Comments:** {p['comments']:,}")
+                st.markdown(f"**Upvote Ratio:** {p['upvote_ratio']}%")
                 if p["text_preview"]:
                     st.markdown(f"**Preview:** {p['text_preview']}...")
                 st.markdown(f"[▶ View on Reddit]({p['url']})")
@@ -166,7 +130,9 @@ if st.button("🔍 Analyze Reddit Trends", type="primary"):
 
         for sub, stats in sorted(sub_stats.items(), key=lambda x: x[1]["total_upvotes"], reverse=True):
             st.markdown(f"**r/{sub}**")
-            st.markdown(f"Upvotes: `{stats['total_upvotes']:,}` &nbsp;|&nbsp; Posts: `{stats['posts']}` &nbsp;|&nbsp; Comments: `{stats['total_comments']:,}`")
+            st.markdown(f"Total Upvotes: `{stats['total_upvotes']:,}`")
+            st.markdown(f"Total Comments: `{stats['total_comments']:,}`")
+            st.markdown(f"Posts Found: `{stats['posts']}`")
             st.divider()
 
     st.subheader("🧠 Viral Analysis")

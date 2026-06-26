@@ -15,7 +15,7 @@ if st.button("🔍 Analyze Virality", type="primary"):
     with st.spinner("Fetching top videos..."):
         video_ids = search_videos(keyword, max_results=num_videos)
         videos = get_video_details(video_ids)
-        ranked_videos = rank_videos(videos)
+        ranked_videos = rank_videos(videos, keyword)
         creators = get_creators(ranked_videos)
 
     col1, col2 = st.columns([3, 2])
@@ -25,9 +25,10 @@ if st.button("🔍 Analyze Virality", type="primary"):
         for i, v in enumerate(ranked_videos[:10], 1):
             with st.expander(f"#{i} — {v['title']}"):
                 st.markdown(f"**Channel:** {v['channel']}")
-                st.markdown(f"**Views:** {v['views']:,} &nbsp;|&nbsp; **Likes:** {v['likes']:,} &nbsp;|&nbsp; **Comments:** {v['comments']:,}")
-                st.markdown(f"**Engagement Rate:** {v['engagement_rate']}% &nbsp;|&nbsp; **Age:** {v['days_old']} days old")
-                st.markdown(f"**Virality Score:** {round(v['score'], 2)}")
+                st.markdown(f"**Published:** {v['published'][:10]}")
+                st.markdown(f"**Views:** {v['views']:,}")
+                st.markdown(f"**Likes:** {v['likes']:,}")
+                st.markdown(f"**Comments:** {v['comments']:,}")
                 if v["tags"]:
                     st.markdown(f"**Tags:** `{'`, `'.join(v['tags'][:6])}`")
                 st.markdown(f"[▶ Watch on YouTube]({v['url']})")
@@ -36,10 +37,13 @@ if st.button("🔍 Analyze Virality", type="primary"):
         st.subheader("🏆 Top Creators")
         for c in creators[:5]:
             st.markdown(f"**{c['channel']}**")
-            st.markdown(f"Views: `{c['total_views']:,}` &nbsp;|&nbsp; Videos: `{c['videos']}` &nbsp;|&nbsp; Avg Engagement: `{c['avg_engagement']}%`")
+            st.markdown(f"Total Views: `{c['total_views']:,}`")
+            st.markdown(f"Total Likes: `{c['total_likes']:,}`")
+            st.markdown(f"Total Comments: `{c['total_comments']:,}`")
+            st.markdown(f"Videos: `{c['videos']}`")
             st.divider()
 
-    st.subheader("🧠 Viral Analysis")
+    st.subheader("🧠 AI Analysis")
     with st.spinner("Analyzing why this is going viral..."):
         result = analyze(keyword, ranked_videos, creators)
     st.markdown(result)

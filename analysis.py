@@ -2,7 +2,7 @@ import google.generativeai as genai
 import os
 
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-model = genai.GenerativeModel('gemini-3.1-flash-lite')
+model = genai.GenerativeModel("gemini-2.5-flash-lite")
 
 
 def analyze(keyword, videos, creators):
@@ -12,9 +12,11 @@ def analyze(keyword, videos, creators):
     for v in top_videos:
         video_summaries.append({
             "title": v["title"],
+            "channel": v["channel"],
+            "published": v["published"][:10],
             "views": f"{v['views']:,}",
-            "days_old": v["days_old"],
-            "engagement_rate": f"{v['engagement_rate']}%",
+            "likes": f"{v['likes']:,}",
+            "comments": f"{v['comments']:,}",
             "tags": v["tags"],
             "description_preview": v["description"],
             "url": v["url"]
@@ -24,7 +26,7 @@ def analyze(keyword, videos, creators):
 
 Keyword: "{keyword}"
 
-Top performing videos (ranked by view velocity):
+Top performing videos (ranked by views):
 {video_summaries}
 
 Analyze ONLY these 3 things, be specific and direct:
@@ -40,7 +42,7 @@ Analyze ONLY these 3 things, be specific and direct:
    - What pain point or desire is being tapped?
 
 3. ⏱️ TIMING & VELOCITY
-   - How old are the top videos vs their view counts?
+   - How recent are the top videos?
    - Is this topic evergreen or a short-lived spike?
    - What's the ideal window to publish content on this topic?
 
