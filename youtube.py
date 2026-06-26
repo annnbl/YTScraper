@@ -3,9 +3,9 @@ from datetime import datetime, timedelta
 import unicodedata
 import os
 
-YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY")
 
-youtube = build("youtube", "v3", developerKey=YOUTUBE_API_KEY)
+def get_youtube_client():
+    return build("youtube", "v3", developerKey=os.getenv("YOUTUBE_API_KEY"))
 
 
 def is_english(text):
@@ -18,6 +18,7 @@ def is_english(text):
 
 
 def search_videos(keyword, max_results=25):
+    youtube = get_youtube_client()
     week_ago = (datetime.utcnow() - timedelta(days=7)).strftime("%Y-%m-%dT%H:%M:%SZ")
 
     request = youtube.search().list(
@@ -44,6 +45,7 @@ def search_videos(keyword, max_results=25):
 
 
 def get_video_details(video_ids):
+    youtube = get_youtube_client()
     request = youtube.videos().list(
         part="snippet,statistics,contentDetails",
         id=",".join(video_ids)
