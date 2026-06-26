@@ -6,21 +6,22 @@ model = genai.GenerativeModel("gemini-2.5-flash-lite")
 
 
 def analyze_reddit(keyword, posts):
-    top_posts = posts[:8]
+    try:
+        top_posts = posts[:8]
 
-    post_summaries = []
-    for p in top_posts:
-        post_summaries.append({
-            "title": p["title"],
-            "subreddit": p["subreddit"],
-            "upvotes": f"{p['upvotes']:,}",
-            "comments": p["comments"],
-            "upvote_ratio": f"{p['upvote_ratio']}%",
-            "flair": p["flair"],
-            "preview": p["text_preview"]
-        })
+        post_summaries = []
+        for p in top_posts:
+            post_summaries.append({
+                "title": p["title"],
+                "subreddit": p["subreddit"],
+                "upvotes": f"{p['upvotes']:,}",
+                "comments": p["comments"],
+                "upvote_ratio": f"{p['upvote_ratio']}%",
+                "flair": p["flair"],
+                "preview": p["text_preview"]
+            })
 
-    prompt = f"""You are a viral content strategist analyzing why Reddit posts explode in upvotes.
+        prompt = f"""You are a viral content strategist analyzing why Reddit posts explode in upvotes.
 
 Keyword: "{keyword}"
 
@@ -46,5 +47,10 @@ Analyze ONLY these 3 things, be specific and direct:
 Be blunt, specific, and actionable. No fluff.
 """
 
-    response = model.generate_content(prompt)
-    return response.text
+        response = model.generate_content(prompt)
+        return response.text
+
+    except Exception as e:
+        if "ResourceExhausted" in str(e):
+            return "⚠️ Gemini free tier daily limit reached. Please try again after midnight Pacific time (UTC-7)."
+        return f"⚠️ Analysis failed: {str(e)}"

@@ -6,23 +6,24 @@ model = genai.GenerativeModel("gemini-2.5-flash-lite")
 
 
 def analyze(keyword, videos, creators):
-    top_videos = videos[:8]
+    try:
+        top_videos = videos[:8]
 
-    video_summaries = []
-    for v in top_videos:
-        video_summaries.append({
-            "title": v["title"],
-            "channel": v["channel"],
-            "published": v["published"][:10],
-            "views": f"{v['views']:,}",
-            "likes": f"{v['likes']:,}",
-            "comments": f"{v['comments']:,}",
-            "tags": v["tags"],
-            "description_preview": v["description"],
-            "url": v["url"]
-        })
+        video_summaries = []
+        for v in top_videos:
+            video_summaries.append({
+                "title": v["title"],
+                "channel": v["channel"],
+                "published": v["published"][:10],
+                "views": f"{v['views']:,}",
+                "likes": f"{v['likes']:,}",
+                "comments": f"{v['comments']:,}",
+                "tags": v["tags"],
+                "description_preview": v["description"],
+                "url": v["url"]
+            })
 
-    prompt = f"""You are a viral content strategist analyzing why YouTube videos explode in views.
+        prompt = f"""You are a viral content strategist analyzing why YouTube videos explode in views.
 
 Keyword: "{keyword}"
 
@@ -49,5 +50,10 @@ Analyze ONLY these 3 things, be specific and direct:
 Be blunt, specific, and actionable. No fluff.
 """
 
-    response = model.generate_content(prompt)
-    return response.text
+        response = model.generate_content(prompt)
+        return response.text
+
+    except Exception as e:
+        if "ResourceExhausted" in str(e):
+            return "⚠️ Gemini free tier daily limit reached. Please try again after midnight Pacific time (UTC-7)."
+        return f"⚠️ Analysis failed: {str(e)}"
